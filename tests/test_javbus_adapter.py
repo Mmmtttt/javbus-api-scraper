@@ -56,3 +56,35 @@ def test_search_videos_forwards_pages_and_stops_after_requested_page(monkeypatch
     assert result["page"] == 1
     assert result["has_next"] is False
     assert result["videos"] == [{"video_id": "ABP-123"}, {"video_id": "ABP-123"}]
+
+
+def test_get_video_detail_parses_core_fields_and_actor_links(monkeypatch):
+    adapter = JavbusAdapter()
+
+    html = """
+    <div class="container">
+      <h3>Fixture title</h3>
+      <div class="movie">
+        <a class="bigImage" href="//img.example/full.jpg"><img src="/small.jpg"></a>
+        <div class="info">
+          <p><span class="header">發行日期:</span> 2026-01-02</p>
+          <p><span class="header">長度:</span> 120分鐘</p>
+          <p class="genre"><label><a href="/genre/action">Action</a></label></p>
+          <p class="genre" onmouseover="fixture"><a href="/star/actor-1">Fixture Actor</a></p>
+        </div>
+      </div>
+    </div>
+    """
+
+    monkeypatch.setattr(adapter, "_get", lambda url: SimpleNamespace(text=html, raise_for_status=lambda: None))
+    monkeypatch.setattr(adapter, "_get_actor_avatar", lambda *args, **kwargs: None)
+
+    result = adapter.get_video_detail("FIX-001")
+
+    assert result["video_id"] == "FIX-001"
+    assert result["title"] == "Fixture title"
+    assert result["cover_url"] == "https://img.example/full.jpg"
+    assert result["date"] == "2026-01-02"
+    assert result["video_length"] == 120
+    assert result["actors"] == ["Fixture Actor"]
+    assert result["actors_detail"][0]["id"] == "actor-1"
